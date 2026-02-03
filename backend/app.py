@@ -85,6 +85,14 @@ async def get_course_stats():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class ClearSessionRequest(BaseModel):
+    session_id: str
+
+@app.post("/api/session/clear")
+async def clear_session(request: ClearSessionRequest):
+    rag_system.session_manager.clear_session(request.session_id)
+    return {"status": "cleared"}
+
 @app.on_event("startup")
 async def startup_event():
     """Load initial documents on startup"""
@@ -116,4 +124,4 @@ class DevStaticFiles(StaticFiles):
     
     
 # Serve static files for the frontend
-app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")
+app.mount("/", DevStaticFiles(directory="../frontend", html=True), name="static")
