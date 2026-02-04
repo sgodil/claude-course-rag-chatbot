@@ -1,14 +1,12 @@
 """Tests for CourseSearchTool, ToolManager, and VectorStore search behavior."""
 
-import pytest
 from config import Config
-from vector_store import VectorStore
-from search_tools import CourseSearchTool, ToolManager, CourseOutlineTool
-
+from search_tools import CourseSearchTool, ToolManager
 
 # ---------------------------------------------------------------------------
 # Config-level: confirm the bug exists in the default Config
 # ---------------------------------------------------------------------------
+
 
 class TestConfigBug:
     def test_config_max_results_is_five(self):
@@ -20,6 +18,7 @@ class TestConfigBug:
 # ---------------------------------------------------------------------------
 # VectorStore.search() with zero vs. non-zero max_results
 # ---------------------------------------------------------------------------
+
 
 class TestVectorStoreSearch:
     def test_vector_store_search_with_zero_max_results(self, buggy_vector_store):
@@ -47,6 +46,7 @@ class TestVectorStoreSearch:
 # ---------------------------------------------------------------------------
 # CourseSearchTool.execute()
 # ---------------------------------------------------------------------------
+
 
 class TestCourseSearchToolExecute:
     def test_course_search_tool_execute_returns_error(self, buggy_vector_store):
@@ -92,7 +92,9 @@ class TestCourseSearchToolExecute:
         and returns a string result (possibly from the nearest match).
         """
         tool = CourseSearchTool(fixed_vector_store)
-        result = tool.execute(query="anything", course_name="Nonexistent Course XYZ 999")
+        result = tool.execute(
+            query="anything", course_name="Nonexistent Course XYZ 999"
+        )
         # The fuzzy resolver will pick the closest course; we just verify
         # the tool completes without error and returns a non-empty string.
         assert isinstance(result, str)
@@ -102,6 +104,7 @@ class TestCourseSearchToolExecute:
 # ---------------------------------------------------------------------------
 # ToolManager wiring
 # ---------------------------------------------------------------------------
+
 
 class TestToolManager:
     def test_tool_manager_dispatch(self, buggy_vector_store):

@@ -1,5 +1,5 @@
 import anthropic
-from typing import List, Optional, Dict, Any
+
 
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
@@ -38,11 +38,7 @@ Provide only the direct answer to what was asked.
         self.model = model
 
         # Pre-build base API parameters
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
-        }
+        self.base_params = {"model": self.model, "temperature": 0, "max_tokens": 800}
 
     @staticmethod
     def _extract_text(response) -> str:
@@ -52,10 +48,13 @@ Provide only the direct answer to what was asked.
                 return block.text
         return ""
 
-    def generate_response(self, query: str,
-                         conversation_history: Optional[str] = None,
-                         tools: Optional[List] = None,
-                         tool_manager=None) -> str:
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: str | None = None,
+        tools: list | None = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with optional tool usage and conversation context.
 
@@ -82,11 +81,11 @@ Provide only the direct answer to what was asked.
         messages = [{"role": "user", "content": query}]
         response = None
 
-        for round in range(self.MAX_TOOL_ROUNDS):
+        for _round in range(self.MAX_TOOL_ROUNDS):
             api_params = {
                 **self.base_params,
                 "messages": messages,
-                "system": system_content
+                "system": system_content,
             }
 
             if tools:
@@ -105,15 +104,14 @@ Provide only the direct answer to what was asked.
             tool_results = []
             for block in response.content:
                 if block.type == "tool_use":
-                    tool_result = tool_manager.execute_tool(
-                        block.name,
-                        **block.input
+                    tool_result = tool_manager.execute_tool(block.name, **block.input)
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": tool_result,
+                        }
                     )
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": tool_result
-                    })
 
             # Append tool results as user message
             if tool_results:
@@ -124,7 +122,7 @@ Provide only the direct answer to what was asked.
             api_params = {
                 **self.base_params,
                 "messages": messages,
-                "system": system_content
+                "system": system_content,
             }
             response = self.client.messages.create(**api_params)
 

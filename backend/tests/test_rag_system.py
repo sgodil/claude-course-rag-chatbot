@@ -1,15 +1,14 @@
 """Integration tests for RAGSystem — real VectorStore + real ToolManager, mocked Anthropic client."""
 
-from unittest.mock import patch, MagicMock
 from types import SimpleNamespace
+from unittest.mock import patch
 
-import pytest
-from conftest import _add_test_data, BuggyConfig, FixedConfig
-
+from conftest import _add_test_data
 
 # ---------------------------------------------------------------------------
 # Helpers (same mock builders as test_ai_generator)
 # ---------------------------------------------------------------------------
+
 
 def _text_block(text):
     return SimpleNamespace(type="text", text=text)
@@ -27,11 +26,13 @@ def _make_response(content_blocks, stop_reason="end_turn"):
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestRAGSystemInitialization:
     def test_initialization_propagates_buggy_max_results(self, test_config):
         """RAGSystem with buggy config (MAX_RESULTS=0) sets vector_store.max_results to 0."""
         with patch("ai_generator.anthropic.Anthropic"):
             from rag_system import RAGSystem
+
             rag = RAGSystem(test_config)
             # test_config still uses MAX_RESULTS=0 to exercise the buggy path
             assert rag.vector_store.max_results == 0
@@ -39,7 +40,9 @@ class TestRAGSystemInitialization:
 
 class TestRAGSystemQuery:
     @patch("ai_generator.anthropic.Anthropic")
-    def test_query_hits_search_error_with_buggy_config(self, MockAnthropic, test_config):
+    def test_query_hits_search_error_with_buggy_config(
+        self, MockAnthropic, test_config
+    ):
         """Full flow: with MAX_RESULTS=0, the tool result contains a ChromaDB error."""
         mock_client = MockAnthropic.return_value
 
@@ -57,17 +60,21 @@ class TestRAGSystemQuery:
         mock_client.messages.create.side_effect = [first_response, second_response]
 
         from rag_system import RAGSystem
+
         rag = RAGSystem(test_config)
         _add_test_data(rag.vector_store)
 
         session_id = rag.session_manager.create_session()
-        response, sources = rag.query("What are Python variables?", session_id=session_id)
+        response, sources = rag.query(
+            "What are Python variables?", session_id=session_id
+        )
 
         # The second API call's messages should contain the search error
         second_call = mock_client.messages.create.call_args_list[1]
         messages = second_call.kwargs.get("messages") or second_call[1].get("messages")
         tool_result_msgs = [
-            m for m in messages
+            m
+            for m in messages
             if m["role"] == "user" and isinstance(m["content"], list)
         ]
         assert len(tool_result_msgs) == 1
@@ -91,17 +98,21 @@ class TestRAGSystemQuery:
         mock_client.messages.create.side_effect = [first_response, second_response]
 
         from rag_system import RAGSystem
+
         rag = RAGSystem(fixed_config)
         _add_test_data(rag.vector_store)
 
         session_id = rag.session_manager.create_session()
-        response, sources = rag.query("What are Python variables?", session_id=session_id)
+        response, sources = rag.query(
+            "What are Python variables?", session_id=session_id
+        )
 
         # The tool result sent back to Claude should have real content
         second_call = mock_client.messages.create.call_args_list[1]
         messages = second_call.kwargs.get("messages") or second_call[1].get("messages")
         tool_result_msgs = [
-            m for m in messages
+            m
+            for m in messages
             if m["role"] == "user" and isinstance(m["content"], list)
         ]
         assert len(tool_result_msgs) == 1
@@ -126,6 +137,7 @@ class TestRAGSystemSources:
         mock_client.messages.create.side_effect = [first_response, second_response]
 
         from rag_system import RAGSystem
+
         rag = RAGSystem(test_config)
         _add_test_data(rag.vector_store)
 
@@ -134,7 +146,9 @@ class TestRAGSystemSources:
         assert sources == []
 
     @patch("ai_generator.anthropic.Anthropic")
-    def test_sources_populated_after_successful_search(self, MockAnthropic, fixed_config):
+    def test_sources_populated_after_successful_search(
+        self, MockAnthropic, fixed_config
+    ):
         """When the search succeeds, sources list has entries."""
         mock_client = MockAnthropic.return_value
 
@@ -148,6 +162,7 @@ class TestRAGSystemSources:
         mock_client.messages.create.side_effect = [first_response, second_response]
 
         from rag_system import RAGSystem
+
         rag = RAGSystem(fixed_config)
         _add_test_data(rag.vector_store)
 
@@ -170,6 +185,7 @@ class TestRAGSystemSession:
         )
 
         from rag_system import RAGSystem
+
         rag = RAGSystem(fixed_config)
 
         session_id = rag.session_manager.create_session()

@@ -1,16 +1,15 @@
 """Tests for AIGenerator with mocked Anthropic client (no real API calls)."""
 
-from unittest.mock import MagicMock, patch, PropertyMock
 from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
-import pytest
 from ai_generator import AIGenerator
 from search_tools import ToolManager
-
 
 # ---------------------------------------------------------------------------
 # Helpers to build mock Anthropic response objects
 # ---------------------------------------------------------------------------
+
 
 def _text_block(text):
     """Simulate an anthropic TextBlock."""
@@ -30,6 +29,7 @@ def _make_response(content_blocks, stop_reason="end_turn"):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestAIGeneratorDirectResponse:
     @patch("ai_generator.anthropic.Anthropic")
@@ -54,7 +54,9 @@ class TestAIGeneratorToolUse:
         mock_client = MockAnthropic.return_value
 
         # First call: Claude wants to use a tool
-        tool_block = _tool_use_block("toolu_123", "search_course_content", {"query": "Python"})
+        tool_block = _tool_use_block(
+            "toolu_123", "search_course_content", {"query": "Python"}
+        )
         first_response = _make_response([tool_block], stop_reason="tool_use")
 
         # Second call: Claude returns final text
@@ -67,10 +69,20 @@ class TestAIGeneratorToolUse:
         mock_tm.execute_tool.return_value = "Tool result: Python variables info"
 
         gen = AIGenerator(api_key="fake", model="test-model")
-        tools = [{"name": "search_course_content", "description": "Search", "input_schema": {}}]
-        result = gen.generate_response("Tell me about Python", tools=tools, tool_manager=mock_tm)
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {},
+            }
+        ]
+        result = gen.generate_response(
+            "Tell me about Python", tools=tools, tool_manager=mock_tm
+        )
 
-        mock_tm.execute_tool.assert_called_once_with("search_course_content", query="Python")
+        mock_tm.execute_tool.assert_called_once_with(
+            "search_course_content", query="Python"
+        )
         assert result == "Python is a programming language."
 
         # Bug fix verification: 2nd API call should include tools and tool_choice
@@ -85,7 +97,9 @@ class TestAIGeneratorToolUse:
         """The error string from a failed tool appears in the follow-up API messages."""
         mock_client = MockAnthropic.return_value
 
-        tool_block = _tool_use_block("toolu_err", "search_course_content", {"query": "test"})
+        tool_block = _tool_use_block(
+            "toolu_err", "search_course_content", {"query": "test"}
+        )
         first_response = _make_response([tool_block], stop_reason="tool_use")
         second_response = _make_response(
             [_text_block("Sorry, the search failed.")], stop_reason="end_turn"
@@ -93,18 +107,32 @@ class TestAIGeneratorToolUse:
         mock_client.messages.create.side_effect = [first_response, second_response]
 
         mock_tm = MagicMock(spec=ToolManager)
-        error_msg = "Search error: Number of requested results 0, cannot be negative, or zero."
+        error_msg = (
+            "Search error: Number of requested results 0, cannot be negative, or zero."
+        )
         mock_tm.execute_tool.return_value = error_msg
 
         gen = AIGenerator(api_key="fake", model="test-model")
-        tools = [{"name": "search_course_content", "description": "Search", "input_schema": {}}]
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {},
+            }
+        ]
         gen.generate_response("test query", tools=tools, tool_manager=mock_tm)
 
         # The second API call should contain the error in the messages
         second_call_kwargs = mock_client.messages.create.call_args_list[1]
-        messages = second_call_kwargs.kwargs.get("messages") or second_call_kwargs[1].get("messages")
+        messages = second_call_kwargs.kwargs.get("messages") or second_call_kwargs[
+            1
+        ].get("messages")
         # Find the tool_result message
-        tool_result_msg = [m for m in messages if m["role"] == "user" and isinstance(m["content"], list)]
+        tool_result_msg = [
+            m
+            for m in messages
+            if m["role"] == "user" and isinstance(m["content"], list)
+        ]
         assert len(tool_result_msg) == 1
         tool_results = tool_result_msg[0]["content"]
         assert any(tr["content"] == error_msg for tr in tool_results)
@@ -119,7 +147,9 @@ class TestAIGeneratorToolUse:
         """Successful tool content appears in the follow-up API messages."""
         mock_client = MockAnthropic.return_value
 
-        tool_block = _tool_use_block("toolu_ok", "search_course_content", {"query": "neural"})
+        tool_block = _tool_use_block(
+            "toolu_ok", "search_course_content", {"query": "neural"}
+        )
         first_response = _make_response([tool_block], stop_reason="tool_use")
         second_response = _make_response(
             [_text_block("Neural networks are...")], stop_reason="end_turn"
@@ -127,16 +157,30 @@ class TestAIGeneratorToolUse:
         mock_client.messages.create.side_effect = [first_response, second_response]
 
         mock_tm = MagicMock(spec=ToolManager)
-        success_content = "[Advanced Machine Learning - Lesson 1]\nNeural networks consist of layers."
+        success_content = (
+            "[Advanced Machine Learning - Lesson 1]\nNeural networks consist of layers."
+        )
         mock_tm.execute_tool.return_value = success_content
 
         gen = AIGenerator(api_key="fake", model="test-model")
-        tools = [{"name": "search_course_content", "description": "Search", "input_schema": {}}]
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {},
+            }
+        ]
         gen.generate_response("neural networks", tools=tools, tool_manager=mock_tm)
 
         second_call_kwargs = mock_client.messages.create.call_args_list[1]
-        messages = second_call_kwargs.kwargs.get("messages") or second_call_kwargs[1].get("messages")
-        tool_result_msg = [m for m in messages if m["role"] == "user" and isinstance(m["content"], list)]
+        messages = second_call_kwargs.kwargs.get("messages") or second_call_kwargs[
+            1
+        ].get("messages")
+        tool_result_msg = [
+            m
+            for m in messages
+            if m["role"] == "user" and isinstance(m["content"], list)
+        ]
         assert len(tool_result_msg) == 1
         tool_results = tool_result_msg[0]["content"]
         assert any(tr["content"] == success_content for tr in tool_results)
@@ -157,7 +201,13 @@ class TestAIGeneratorAPIParams:
         )
 
         gen = AIGenerator(api_key="fake", model="test-model")
-        tools = [{"name": "search_course_content", "description": "Search", "input_schema": {}}]
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {},
+            }
+        ]
         gen.generate_response("query", tools=tools)
 
         call_kwargs = mock_client.messages.create.call_args.kwargs
@@ -190,7 +240,9 @@ class TestAIGeneratorAPIParams:
         )
 
         gen = AIGenerator(api_key="fake", model="test-model")
-        gen.generate_response("query", conversation_history="User: hi\nAssistant: hello")
+        gen.generate_response(
+            "query", conversation_history="User: hi\nAssistant: hello"
+        )
 
         call_kwargs = mock_client.messages.create.call_args.kwargs
         system_content = call_kwargs["system"]
@@ -208,31 +260,46 @@ class TestAIGeneratorMultiRoundToolUse:
         mock_client = MockAnthropic.return_value
 
         # Round 1: Claude calls get_course_outline
-        outline_block = _tool_use_block("toolu_1", "get_course_outline", {"course_name": "MCP"})
+        outline_block = _tool_use_block(
+            "toolu_1", "get_course_outline", {"course_name": "MCP"}
+        )
         resp1 = _make_response([outline_block], stop_reason="tool_use")
 
         # Round 2: Claude calls search_course_content
-        search_block = _tool_use_block("toolu_2", "search_course_content", {"query": "MCP lesson 3"})
+        search_block = _tool_use_block(
+            "toolu_2", "search_course_content", {"query": "MCP lesson 3"}
+        )
         resp2 = _make_response([search_block], stop_reason="tool_use")
 
         # Round 3: Claude returns final text
         resp3 = _make_response(
-            [_text_block("MCP lesson 3 covers server implementation.")], stop_reason="end_turn"
+            [_text_block("MCP lesson 3 covers server implementation.")],
+            stop_reason="end_turn",
         )
         mock_client.messages.create.side_effect = [resp1, resp2, resp3]
 
         mock_tm = MagicMock(spec=ToolManager)
         mock_tm.execute_tool.side_effect = [
             "Course: MCP\nLessons:\n  1. Intro\n  2. Basics\n  3. Server Impl",
-            "[MCP - Lesson 3]\nServer implementation details..."
+            "[MCP - Lesson 3]\nServer implementation details...",
         ]
 
         gen = AIGenerator(api_key="fake", model="test-model")
         tools = [
-            {"name": "get_course_outline", "description": "Outline", "input_schema": {}},
-            {"name": "search_course_content", "description": "Search", "input_schema": {}}
+            {
+                "name": "get_course_outline",
+                "description": "Outline",
+                "input_schema": {},
+            },
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {},
+            },
         ]
-        result = gen.generate_response("What does MCP lesson 3 cover?", tools=tools, tool_manager=mock_tm)
+        result = gen.generate_response(
+            "What does MCP lesson 3 cover?", tools=tools, tool_manager=mock_tm
+        )
 
         # Verify 3 API calls
         assert mock_client.messages.create.call_count == 3
@@ -240,7 +307,9 @@ class TestAIGeneratorMultiRoundToolUse:
         # Verify 2 tool executions with correct args
         assert mock_tm.execute_tool.call_count == 2
         mock_tm.execute_tool.assert_any_call("get_course_outline", course_name="MCP")
-        mock_tm.execute_tool.assert_any_call("search_course_content", query="MCP lesson 3")
+        mock_tm.execute_tool.assert_any_call(
+            "search_course_content", query="MCP lesson 3"
+        )
 
         # Verify correct final text
         assert result == "MCP lesson 3 covers server implementation."
@@ -256,19 +325,32 @@ class TestAIGeneratorMultiRoundToolUse:
         """Claude uses one tool then returns text — only 2 API calls."""
         mock_client = MockAnthropic.return_value
 
-        tool_block = _tool_use_block("toolu_1", "search_course_content", {"query": "Python basics"})
+        tool_block = _tool_use_block(
+            "toolu_1", "search_course_content", {"query": "Python basics"}
+        )
         resp1 = _make_response([tool_block], stop_reason="tool_use")
         resp2 = _make_response(
-            [_text_block("Python basics cover variables and loops.")], stop_reason="end_turn"
+            [_text_block("Python basics cover variables and loops.")],
+            stop_reason="end_turn",
         )
         mock_client.messages.create.side_effect = [resp1, resp2]
 
         mock_tm = MagicMock(spec=ToolManager)
-        mock_tm.execute_tool.return_value = "[Python - Lesson 1]\nVariables and loops..."
+        mock_tm.execute_tool.return_value = (
+            "[Python - Lesson 1]\nVariables and loops..."
+        )
 
         gen = AIGenerator(api_key="fake", model="test-model")
-        tools = [{"name": "search_course_content", "description": "Search", "input_schema": {}}]
-        result = gen.generate_response("Python basics", tools=tools, tool_manager=mock_tm)
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {},
+            }
+        ]
+        result = gen.generate_response(
+            "Python basics", tools=tools, tool_manager=mock_tm
+        )
 
         assert mock_client.messages.create.call_count == 2
         assert mock_tm.execute_tool.call_count == 1
@@ -284,7 +366,9 @@ class TestAIGeneratorMultiRoundToolUse:
         resp1 = _make_response([block1], stop_reason="tool_use")
 
         # Round 2: tool use again (exhausts MAX_TOOL_ROUNDS=2)
-        block2 = _tool_use_block("toolu_2", "search_course_content", {"query": "AI intro"})
+        block2 = _tool_use_block(
+            "toolu_2", "search_course_content", {"query": "AI intro"}
+        )
         resp2 = _make_response([block2], stop_reason="tool_use")
 
         # Forced text response (no tools)
@@ -298,8 +382,16 @@ class TestAIGeneratorMultiRoundToolUse:
 
         gen = AIGenerator(api_key="fake", model="test-model")
         tools = [
-            {"name": "get_course_outline", "description": "Outline", "input_schema": {}},
-            {"name": "search_course_content", "description": "Search", "input_schema": {}}
+            {
+                "name": "get_course_outline",
+                "description": "Outline",
+                "input_schema": {},
+            },
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {},
+            },
         ]
         result = gen.generate_response("AI intro", tools=tools, tool_manager=mock_tm)
 
@@ -318,16 +410,21 @@ class TestAIGeneratorMultiRoundToolUse:
         mock_client = MockAnthropic.return_value
 
         # Round 1: tool use
-        block1 = _tool_use_block("toolu_1", "get_course_outline", {"course_name": "nonexistent"})
+        block1 = _tool_use_block(
+            "toolu_1", "get_course_outline", {"course_name": "nonexistent"}
+        )
         resp1 = _make_response([block1], stop_reason="tool_use")
 
         # Round 2: tool use
-        block2 = _tool_use_block("toolu_2", "search_course_content", {"query": "fallback search"})
+        block2 = _tool_use_block(
+            "toolu_2", "search_course_content", {"query": "fallback search"}
+        )
         resp2 = _make_response([block2], stop_reason="tool_use")
 
         # Final text
         resp3 = _make_response(
-            [_text_block("No course found, but here's related content.")], stop_reason="end_turn"
+            [_text_block("No course found, but here's related content.")],
+            stop_reason="end_turn",
         )
         mock_client.messages.create.side_effect = [resp1, resp2, resp3]
 
@@ -338,24 +435,42 @@ class TestAIGeneratorMultiRoundToolUse:
 
         gen = AIGenerator(api_key="fake", model="test-model")
         tools = [
-            {"name": "get_course_outline", "description": "Outline", "input_schema": {}},
-            {"name": "search_course_content", "description": "Search", "input_schema": {}}
+            {
+                "name": "get_course_outline",
+                "description": "Outline",
+                "input_schema": {},
+            },
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {},
+            },
         ]
-        result = gen.generate_response("nonexistent course", tools=tools, tool_manager=mock_tm)
+        result = gen.generate_response(
+            "nonexistent course", tools=tools, tool_manager=mock_tm
+        )
 
         # The messages list is mutated in-place, so all call_args point to the
         # final state.  Verify via the last (forced-text) call which has the
         # complete conversation: user, asst(tool1), user(result1), asst(tool2),
         # user(result2) — 5 entries total.
-        final_call_msgs = mock_client.messages.create.call_args_list[2].kwargs["messages"]
+        final_call_msgs = mock_client.messages.create.call_args_list[2].kwargs[
+            "messages"
+        ]
         assert len(final_call_msgs) == 5
 
-        tool_result_msgs = [m for m in final_call_msgs if m["role"] == "user" and isinstance(m["content"], list)]
+        tool_result_msgs = [
+            m
+            for m in final_call_msgs
+            if m["role"] == "user" and isinstance(m["content"], list)
+        ]
         assert len(tool_result_msgs) == 2
 
         # First tool result contains the error
         assert any(tr["content"] == error_msg for tr in tool_result_msgs[0]["content"])
         # Second tool result contains the success
-        assert any(tr["content"] == success_msg for tr in tool_result_msgs[1]["content"])
+        assert any(
+            tr["content"] == success_msg for tr in tool_result_msgs[1]["content"]
+        )
 
         assert result == "No course found, but here's related content."
