@@ -19,6 +19,24 @@ dev = [
     "pytest>=9.0.2",
     "black>=24.0.0",
     "ruff>=0.8.0",
+    "httpx>=0.28.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = ["backend"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "-ra",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+    "ignore:resource_tracker:UserWarning",
 ]
 
 [tool.black]
@@ -59,9 +77,3 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["backend"]
-
-[tool.pytest.ini_options]
-testpaths = ["backend/tests"]
-python_files = ["test_*.py"]
-python_functions = ["test_*"]
-addopts = "-v"
